@@ -2,6 +2,7 @@ import { createWriteStream } from 'fs'
 import { mkdir } from "fs/promises"
 import { parse } from 'path'
 import { request } from "https"
+import { Media, MediaVariant } from './types'
 
 export async function sleep(duration: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -37,14 +38,7 @@ export async function download(url: string, out: string): Promise<void> {
   })
 }
 
-export async function waitRateLimit(rateLimit: { remaining: number, reset: number }): Promise<void> {
-  if (rateLimit.remaining === 0) {
-    const duration = rateLimit.reset * 1000 - Date.now()
-    await sleep(duration)
-  }
-}
-
-export function selectVariant(variants: any): any | undefined {
+export function selectVariant(variants: MediaVariant[]): MediaVariant | undefined {
   for (const variant of variants) {
     if (variant.content_type === "application/x-mpegURL")
       continue
@@ -53,10 +47,14 @@ export function selectVariant(variants: any): any | undefined {
   return undefined
 }
 
-export function getMediaUrl(media: any): string {
+export function getMediaUrl(media: Media): string {
   if (media.type === "video") {
-    return selectVariant(media.video_info.variants)
-  } else {
-    return media.media_url_https
+    const variants = media.video_info?.variants
+    if (variants !== undefined) {
+      const variant = selectVariant(variants)
+      if (variant !== undefined)
+        return variant.url
+    }
   }
+  return media.media_url_https
 }
